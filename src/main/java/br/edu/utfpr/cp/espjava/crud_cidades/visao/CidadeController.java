@@ -2,6 +2,7 @@ package br.edu.utfpr.cp.espjava.crud_cidades.visao;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,14 +18,22 @@ public class CidadeController {
 
     private final Set<Cidade> cidades;
 
-    public CidadeController() {
+    private final CidadeRepository repository;
+
+    public CidadeController(CidadeRepository repository) {
         cidades = new HashSet<>();
+        this.repository = repository;
     }
 
     @GetMapping("/")
     public String listar(Model memoria) {
 
-        memoria.addAttribute("listaCidades", cidades);
+        memoria.addAttribute("listaCidades", repository
+                                                            .findAll()
+                                                            .stream().map(cidade -> new Cidade(
+                                                                cidade.getNome(),
+                                                                cidade.getEstado()))
+                                                            .collect(Collectors.toList()));
 
         return "/crud";
     }
@@ -46,45 +55,62 @@ public class CidadeController {
 
                     return("/crud");
         } else {
-            cidades.add(cidade);
+            var novaCidade = new CidadeEntidade();
+            novaCidade.setNome(cidade.getNome());
+            novaCidade.setEstado(cidade.getEstado());
+
+            repository.save(novaCidade);
         }
 
         return "redirect:/";
     }
 
     @GetMapping("/excluir")
-    public String excluir(@RequestParam String nome, @RequestParam String estado) {
+    public String excluir(
+        @RequestParam String nome,
+        @RequestParam String estado) {
 
-        cidades.removeIf(cidadeAtual
-                -> cidadeAtual.getNome().equals(nome)
-                && cidadeAtual.getEstado().equals(estado));
+            var cidadeEncontrada = repository.findByNomeAndEstado(nome, estado);
 
+            cidadeEncontrada.ifPresent(repository::delete);
+            
         return "redirect:/";
     }
 
     @GetMapping("/preparaAlterar")
-    public String preparaAlterar(@RequestParam String nome, @RequestParam String estado, Model memoria) {
+    public String preparaAlterar(
+        @RequestParam String nome,
+        @RequestParam String estado,
+        Model memoria) {
 
-        var cidadeAtual = cidades.stream().filter(cidade
-                -> cidade.getNome().equals(nome)
-                && cidade.getEstado().equals(estado)).findAny();
+        var cidadeAtual = repository.findByNomeAndEstado(nome, estado);
 
-        if (cidadeAtual.isPresent()) {
-            memoria.addAttribute("cidadeAtual", cidadeAtual.get());
-            memoria.addAttribute("listaCidades", cidades);
-        }
+        cidadeAtual.ifPresent(cidadeEncontrda -> {
+            memoria.addAttribute("cidadeAtual", cidadeEncontrda);
+            memoria.addAttribute("listaCidades", repository.findAll());
+        });
 
         return "/crud";
     }
 
     @PostMapping("/alterar")
-    public String alterar(@RequestParam String nomeAtual, @RequestParam String estadoAtual, Cidade cidade, BindingResult bindingResult, Model memoria) {
+    public String alterar(
+        @RequestParam String nomeAtual,
+        @RequestParam String estadoAtual,
+        Cidade cidade,
+        BindingResult validacao,
+        Model memoria) {
         
-        cidades.removeIf(cidadeAtual ->
-        cidadeAtual.getNome().equals(nomeAtual) &&
-        cidadeAtual.getEstado().equals(estadoAtual));
+            var cidadeAtual = repository.findByNomeAndEstado(nomeAtual, estadoAtual);
 
-        criar(cidade, bindingResult, memoria);
+            if(cidadeAtual.isPresent()){
+                var cidadeEncontrada = cidadeAtual.get();
+
+                cidadeEncontrada.setNome(cidade.getNome());
+                cidadeEncontrada.setEstado(cidade.getEstado());
+
+                repository.saveAndFlush(cidadeEncontrada);
+            }
 
         return "redirect:/";
     }
