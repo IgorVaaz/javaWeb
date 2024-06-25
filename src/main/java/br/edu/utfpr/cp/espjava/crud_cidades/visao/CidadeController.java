@@ -5,14 +5,17 @@ import java.util.Set;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import jakarta.validation.Valid;
+
 @Controller
 public class CidadeController {
 
-    private Set<Cidade> cidades;
+    private final Set<Cidade> cidades;
 
     public CidadeController() {
         cidades = new HashSet<>();
@@ -27,9 +30,24 @@ public class CidadeController {
     }
 
     @PostMapping("/criar")
-    public String criar(Cidade cidade) {
+    public String criar(@Valid Cidade cidade, BindingResult validacao, Model memoria) {
+        if(validacao.hasErrors()){
+            validacao
+                .getFieldErrors()
+                .forEach(error ->
+                    memoria.addAttribute(
+                        error.getField(),
+                        error.getDefaultMessage()
+                    ));
 
-        cidades.add(cidade);
+                    memoria.addAttribute("nomeInformado", cidade.getNome());
+                    memoria.addAttribute("estadoInformado", cidade.getEstado());
+                    memoria.addAttribute("listaCidades", cidades);
+
+                    return("/crud");
+        } else {
+            cidades.add(cidade);
+        }
 
         return "redirect:/";
     }
@@ -60,13 +78,13 @@ public class CidadeController {
     }
 
     @PostMapping("/alterar")
-    public String alterar(@RequestParam String nomeAtual, @RequestParam String estadoAtual, Cidade cidade) {
+    public String alterar(@RequestParam String nomeAtual, @RequestParam String estadoAtual, Cidade cidade, BindingResult bindingResult, Model memoria) {
         
         cidades.removeIf(cidadeAtual ->
         cidadeAtual.getNome().equals(nomeAtual) &&
         cidadeAtual.getEstado().equals(estadoAtual));
 
-        criar(cidade);
+        criar(cidade, bindingResult, memoria);
 
         return "redirect:/";
     }
