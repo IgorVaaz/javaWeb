@@ -1,4 +1,4 @@
-package br.edu.utfpr.cp.espjava.crud_cidades.visao;
+package br.edu.utfpr.cp.espjava.crud_cidades.cidade;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -55,11 +55,7 @@ public class CidadeController {
 
                     return("/crud");
         } else {
-            var novaCidade = new CidadeEntidade();
-            novaCidade.setNome(cidade.getNome());
-            novaCidade.setEstado(cidade.getEstado());
-
-            repository.save(novaCidade);
+            repository.save(cidade.clonar());
         }
 
         return "redirect:/";
